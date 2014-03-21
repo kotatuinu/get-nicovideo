@@ -5,7 +5,7 @@
 ダウンロードしたい動画番号を指定して、出力先ディレクトリに出力します。  
  出力ファイル名は、<動画番号>.mp4 となります。  
   
-`PS > get-nicovideo.ps1 -u <UserID> -p <Password> -o <Output Directory> -movie_no <Movie No>[,<Movie No>...]'
+`PS > get-nicovideo.ps1 -u <UserID> -p <Password> -o <Output Directory> -movie_no <Movie No>[,<Movie No>...]`
 * -u : ニコニコ動画のユーザID  
 * -p : ニコニコ動画のユーザIDに対応するパスワード  
 * -o : ダウンロードの出力先ディレクトリ  

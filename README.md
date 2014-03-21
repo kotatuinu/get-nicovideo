@@ -14,9 +14,9 @@
 
 ##技術的覚書
 ###関数
- `function <関数名> (引数[, 引数]) {`  
- `    処理`  
- `}`
+ `function <関数名> (引数[, 引数]) {  
+     処理  
+ }`
 
  return で戻り値を返せる。  
  引数は$Argsで配列として受け取ることも可。  
@@ -45,7 +45,7 @@
  あと、$Matches がある。「正規表現によるマッチング判定」を参照のこと。  
   
 ###定数
-`set-variable -name <変数名> -value <値> -option constant`
+`set-variable -name <変数名> -value <値> -option constant`  
 文字リテラルは、""か''で括る。変数も展開される。変数の後にも文字列が来るときは{}で変数名を括らないと、別の変数として見られてしまう。  
 
 
@@ -63,40 +63,41 @@
 ###出力書式子は、.net Fameworkと同じ。
  {0} とか。  
  -fを使う。  
-`PS C:\Users\kotat_000> "{3:HH:mm:ss},{3:hh:mm:ss},{1}, {0:x}, [{2,5}]" -F 2000,"bbb","ccc",(Get-Date)  
-22:39:39,10:39:39,bbb, 7d0, [  ccc]`
+PS C:\Users\kotat_000> "{3:HH:mm:ss},{3:hh:mm:ss},{1}, {0:x}, [{2,5}]" -F 2000,"bbb","ccc",(Get-Date)  
+22:39:39,10:39:39,bbb, 7d0, [  ccc]
   
 もちろん、結果を変数に入れることもできる。  
-`PS C:\Users\kotat_000> $a="{3:HH:mm:ss},{3:hh:mm:ss},{1}, {0:x}, [{2,5}]" -F 2000,"bbb","ccc",(Get-Date)  
+  
+PS C:\Users\kotat_000> $a="{3:HH:mm:ss},{3:hh:mm:ss},{1}, {0:x}, [{2,5}]" -F 2000,"bbb","ccc",(Get-Date)  
 PS C:\Users\kotat_000> $a  
-22:42:27,10:42:27,bbb, 7d0, [  ccc]`
+22:42:27,10:42:27,bbb, 7d0, [  ccc]
   
   
 ###正規表現によるマッチング判定
  `<対象文字列(変数もOK)> -match <正規表現>`
  戻り値は真偽値($true/$false)  
  パーレン()で括ったところは、$Matches 配列に格納される。  
-`	if( "abcdef" -match "ab(.+)" ) {  
+	if( "abcdef" -match "ab(.+)" ) {  
 		$result1 = $Matches[0]  
 		$result2 = $Matches[1]  
 		[Console]::WriteLine("${result1},${result2}")  
-	}`  
+	}  
 →結果は、abcdef,cdef となる。  
   正規表現のマッチングは if文の条件式で実行しなくていいけど、変数に入れないとTrueとか出ちゃうよ。  
   
-`PS C:\Users\kotat_000> "abcdef" -match "ab(.+)"  
-True`
+PS C:\Users\kotat_000> "abcdef" -match "ab(.+)"  
+True  
   
   
 ###正規表現による文字列置換
- `<対象文字列(変数もOK)> -replace <正規表現>,<置換文字>  
- <対象文字列(変数もOK)> -creplace <正規表現>,<置換文字>`
+ <対象文字列(変数もOK)> -replace <正規表現>,<置換文字>  
+ <対象文字列(変数もOK)> -creplace <正規表現>,<置換文字>
  戻り値は、置換した結果の文字列。  
  前者は、大文字小文字を区別しない。後者は、大文字小文字を区別する。  
   
-`PS C:\Users\kotat_000> "abcdefABCDEF" -replace "cdef","cb"  
-abcbABcb`
+PS C:\Users\kotat_000> "abcdefABCDEF" -replace "cdef","cb"  
+abcbABcb  
 
-`PS C:\Users\kotat_000> "abcdefABCDEF" -creplace "cdef","cb"  
-abcbABCDEF`
+PS C:\Users\kotat_000> "abcdefABCDEF" -creplace "cdef","cb"  
+abcbABCDEF
   

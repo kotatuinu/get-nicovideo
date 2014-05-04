@@ -74,6 +74,7 @@ function GetWebPage($url, [ref]$cc) {
 # Web File取得(GET)
 function GetWebFile($url, $putputFile, [ref]$cc) {
 #[Console]::WriteLine("GetWebFile url=[${url}] putputFile=[${putputFile}]")
+
 	try {
 		$webReq = [System.Net.WebRequest]::Create($url)
 		$webReq.Method = "GET"
@@ -209,6 +210,16 @@ function Get-NicoAPI_MovieInfo($movie_no) {
 		exit
 	}
 
+	$output_path = $ArgMap["-o"]
+	if( -not (Test-Path $output_path)) {
+		[Console]::WriteLine("INVALID OUTPUT_PATH.[$output_path]")
+		exit
+	}
+	$output_path = Convert-Path $output_path
+	if( ($output_path.Length -gt 0) -and ($output_path[$output_path.Length-1] -ne '\') ) {
+		$output_path = "${output_path}\"
+	}
+
 	foreach( $movie_no in $ArgMap["-movie_no"] ) {
 		[Console]::WriteLine("get movie [${movie_no}]")
 
@@ -236,7 +247,7 @@ function Get-NicoAPI_MovieInfo($movie_no) {
 			$movie_url = $Matches[1] -replace "%2F","/" -replace "%3A",":" -replace "%3D", "=" -replace "%3F", "?"
 
 			#movie download
-			GetWebFile ${movie_url} "${movie_no}.mp4" ([ref] ${cc})
+			GetWebFile ${movie_url}  "${output_path}${movie_no}.mp4" ([ref] ${cc})
 
 		} else {
 			# Movie Info don't get

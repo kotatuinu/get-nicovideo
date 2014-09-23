@@ -3,7 +3,7 @@
 set-variable -name NICOVIDEO_API_THUMINFO -value "http://ext.nicovideo.jp/api/getthumbinfo/" -option constant
 set-variable -name NICOVIDEO_URL_CONNECT -value "https://secure.nicovideo.jp/secure/login?site=niconico" -option constant
 set-variable -name NICOVIDEO_URL_MOVIEPAGE -value "http://www.nicovideo.jp/watch/{0}" -option constant
-set-variable -name NICOVIDEO_URL_MOVIE_INFO -value "http://www.nicovideo.jp/api/getflv/{0}?as3=1" -option constant
+set-variable -name NICOVIDEO_URL_MOVIE_INFO -value "http://flapi.nicovideo.jp/api/getflv?v={0}" -option constant
 set-variable -name NICOVIDEO_API -value "http://ext.nicovideo.jp/api/getthumbinfo/{0}" -option constant
 
 
@@ -135,7 +135,11 @@ function PostWebPage($url, $postData, [ref] $cc) {
 function Login-NicoVideo($uid, $pwd, [ref] $cc) {
 	$postDataList = @{
 		"next_url" = "";
-		"mail" = $uid;
+		"show_button_facebook" = "0";
+		"show_button_twitter" = "0";
+		"nolinks" = "0";
+		"_use_valid_error_code" = "0";
+		"mail_tel" = $uid;
 		"password" = $pwd;
 	}
 
@@ -242,7 +246,8 @@ function Get-NicoAPI_MovieInfo($movie_no) {
 
 		# get MovieInfo
 		$movie_info = Get-NicoMovieInfo $movie_no ([ref] ${cc})
-		if($movie_info -match '&url=(.+)&link=') {
+Write-Output $movie_info
+		if($movie_info -match '&url=(.+)(&.+=|)') {
 
 			$movie_url = $Matches[1] -replace "%2F","/" -replace "%3A",":" -replace "%3D", "=" -replace "%3F", "?"
 

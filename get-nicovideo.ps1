@@ -3,13 +3,14 @@
 set-variable -name NICOVIDEO_API_THUMINFO -value "http://ext.nicovideo.jp/api/getthumbinfo/" -option constant
 set-variable -name NICOVIDEO_URL_CONNECT -value "https://secure.nicovideo.jp/secure/login?site=niconico" -option constant
 set-variable -name NICOVIDEO_URL_MOVIEPAGE -value "http://www.nicovideo.jp/watch/{0}" -option constant
-set-variable -name NICOVIDEO_URL_MOVIE_INFO -value "http://flapi.nicovideo.jp/api/getflv?v={0}" -option constant
+set-variable -name NICOVIDEO_URL_MOVIE_INFO -value @("http://flapi.nicovideo.jp/api/getflv?v={0}", "http://www.nicovideo.jp/api/getflv/{0}?as3=1") -option constant
 set-variable -name NICOVIDEO_API -value "http://ext.nicovideo.jp/api/getthumbinfo/{0}" -option constant
 
 
+$ErrorActionPreference = "Stop"
 $encode = [Text.Encoding]::GetEncoding("utf-8")
 
-$ArgMap = @{ 
+$ArgMap = @{
 	"-u" = "";
 	"-p" = "";
 	"-o" = "";
@@ -91,16 +92,25 @@ function GetWebFile($url, $putputFile, [ref]$cc) {
 			$fileStream.Write($buf, 0, $read_size)
 		} while( $read_size -gt 0 )
 
+		#即時に閉じたいため、finallyとは別に実行
+		$fileStream.Close()
+		$fileStream = $null
+		$resStream.Close()
+		$resStream = $null
+
+	} catch {
+		return $false
 	} finally {
 		if( $fileStream -ne $null) { $fileStream.Close() }
 		if( $resStream -ne $null)  { $resStream.Close() }
 	}
 
+	return $true
 }
 
 # WebPage取得(POST)
 function PostWebPage($url, $postData, [ref] $cc) {
-[Console]::WriteLine("PostWebPage : url=${url}, data = ${postData}")
+#[Console]::WriteLine("PostWebPage : url=${url}, data = ${postData}")
 
 	$webReq = [System.Net.WebRequest]::Create($url)
 	if( $webReq -eq $null ) {
@@ -172,9 +182,10 @@ function Get-NicoMoviePage($movie_no, [ref]$cc) {
 
 
 # 動画情報ページ
-function Get-NicoMovieInfo($movie_no, [ref]$cc) {
+function Get-NicoMovieInfo($url_format, $movie_no, [ref]$cc) {
 
-	$url = ${NICOVIDEO_URL_MOVIE_INFO} -F ${movie_no}
+#	$url = ${NICOVIDEO_URL_MOVIE_INFO} -F ${movie_no}
+	$url = ${url_format} -F ${movie_no}
 	return GetWebPage $url $cc
 }
 
@@ -190,6 +201,32 @@ function Get-NicoAPI_MovieInfo($movie_no) {
 #$xmlData = $wc.DownloadString($url)
 #[Console]::WriteLine( "movie_no=${movie_no}, URL=${url}, result=${xmlData}" )
 	return [xml]$wc.DownloadString($url)
+}
+
+#ファイルの先頭
+function Get-FileType($fileName) {
+	$bufSize = 3
+	[byte[]] $buf = New-Object byte[] $bufSize
+
+	try {
+		$fileStream = New-Object System.IO.FileStream($fileName, [System.IO.FileMode]::Open)
+		$fileStream.Read($buf, 0, ${bufSize}) | Out-Null
+		$fileStream.Close()
+		$fileStream = $null
+	} finally {
+		if( $fileStream -ne $null) { $fileStream.Close() }
+	}
+
+	$d=""
+	$buf | %{ $d += [system.Text.Encoding]::GetEncoding("ASCII").getchars($_) }
+
+	switch( $d ) {
+		"CWS" { $ext="swf" }
+		"FLV" { $ext="flv" }
+		default { $ext="mp4" }
+	}
+
+	return $ext
 }
 
 
@@ -245,22 +282,35 @@ function Get-NicoAPI_MovieInfo($movie_no) {
 		#Write-Output $movie_page
 
 		# get MovieInfo
-		$movie_info = Get-NicoMovieInfo $movie_no ([ref] ${cc})
-Write-Output $movie_info
-		if($movie_info -match '&url=(.+)(&.+=|)') {
+		foreach($moveInfURL in $NICOVIDEO_URL_MOVIE_INFO) {
+			$movie_info = Get-NicoMovieInfo $moveInfURL $movie_no ([ref] ${cc})
+			if($movie_info -match '&url=(.+)(&.+=|)') {
 
-			$movie_url = $Matches[1] -replace "%2F","/" -replace "%3A",":" -replace "%3D", "=" -replace "%3F", "?"
+				$movie_url = $Matches[1] -replace "%2F","/" -replace "%3A",":" -replace "%3D", "=" -replace "%3F", "?"
+				$tmp_file = "${output_path}${movie_no}.tmp"
 
-			#movie download
-			GetWebFile ${movie_url}  "${output_path}${movie_no}.mp4" ([ref] ${cc})
+				#movie download
+				GetWebFile ${movie_url} $tmp_file ([ref] ${cc}) | %{ if($_ -ne $true) { return } }
 
-		} else {
-			# Movie Info don't get
-			[Console]::WriteLine("FAILED get MovieInfoPage.")
+				# get extend name
+				if( Test-Path ${tmp_file} -PathType leaf ) {
+					$ext = Get-FileType $tmp_file
+
+					#tmp file name change to file name
+					Move-Item $tmp_file "${output_path}${movie_no}.${ext}" -Force
+					[Console]::WriteLine("GetWebFile Success.")
+					break
+				} else {
+					# Movie Info don't get
+					[Console]::WriteLine("GetWebFile failed.")
+				}
+
+			} else {
+				# Movie Info don't get
+				[Console]::WriteLine("FAILED get MovieInfoPage.")
+			}
 		}
 
 		# wait 30sec
 		Start-Sleep -s 30
 	}
-
-

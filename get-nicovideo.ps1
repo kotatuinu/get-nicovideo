@@ -1,55 +1,25 @@
+﻿[CmdletBinding()]
+param(
+	[Parameter(Mandatory=$True,Position=1,HelpMessage="NiconicoVideo UserName.")]
+	[String]$userid,
+
+	[Parameter(Mandatory=$True,Position=2,HelpMessage="NiconicoVideo Password.")]
+	[String]$password,
+
+	[Parameter(Mandatory=$True,Position=3,HelpMessage="OutputDirectory.")]
+	[String]$output_path,
+
+	[Parameter(ValueFromPipeline=$True,Mandatory=$False,Position=4,HelpMessage="Download niconicoVideo MovieNo List.")]
+	[String[]]$movie_no
+)
+
 [void][reflection.assembly]::LoadWithPartialName("System.Web")
 
-set-variable -name NICOVIDEO_API_THUMINFO -value "http://ext.nicovideo.jp/api/getthumbinfo/" -option constant
-set-variable -name NICOVIDEO_URL_CONNECT -value "https://secure.nicovideo.jp/secure/login?site=niconico" -option constant
-set-variable -name NICOVIDEO_URL_MOVIEPAGE -value "http://www.nicovideo.jp/watch/{0}" -option constant
-set-variable -name NICOVIDEO_URL_MOVIE_INFO -value @("http://flapi.nicovideo.jp/api/getflv?v={0}", "http://www.nicovideo.jp/api/getflv/{0}?as3=1") -option constant
-set-variable -name NICOVIDEO_API -value "http://ext.nicovideo.jp/api/getthumbinfo/{0}" -option constant
-
-
-$ErrorActionPreference = "Stop"
-$encode = [Text.Encoding]::GetEncoding("utf-8")
-
-$ArgMap = @{
-	"-u" = "";
-	"-p" = "";
-	"-o" = "";
-	"-movie_no" = "";
+# pileline からの入力も動画番号として扱う
+if( $null -ne $input ) {
+	$movie_no = @($input) + $movie_no
 }
 
-# Argument Get & Check
-function Get-Argument($ArgList) {
-	if( ${ArgList}.Length -ne ${ArgMap}.Count*2 ) {
-		return $false
-	}
-
-	$ArgKey=""
-	$ArgList | ForEach-Object {
-		if($ArgKey -eq "") {
-			if($ArgMap.ContainsKey($_)) {
-				$ArgKey=$_
-			} else {
-				return $false;
-				break
-			}
-		} else {
-			$ArgMap[$ArgKey]=$_
-			$ArgKey=""
-		}
-	}
-	return $true;
-}
-
-# Usage
-$Usages = @(
-	"Get NiconicoVideo's Movie File."
-	" Usage : $MyInvocation.MyCommand.Name -u <UserID> -p <Password> -o <Output Directory> -movie_no <Movie No>[,<Movie No>...]";
-	"  OPTIONS"
-	"  -u : NiconicoVideo UserName.";
-	"  -p : NiconicoVideo Password.";
-	"  -o : Output Directory.";
-	"  -movie_no : Download NiconicoVideo MovieNo List.";
-)
 function Usage {
 	$Usages | ForEach-Object { $_ }
 }
@@ -184,7 +154,6 @@ function Get-NicoMoviePage($movie_no, [ref]$cc) {
 # 動画情報ページ
 function Get-NicoMovieInfo($url_format, $movie_no, [ref]$cc) {
 
-#	$url = ${NICOVIDEO_URL_MOVIE_INFO} -F ${movie_no}
 	$url = ${url_format} -F ${movie_no}
 	return GetWebPage $url $cc
 }
@@ -231,86 +200,112 @@ function Get-FileType($fileName) {
 
 
 # main
+&{
+	begin {
 
-	# Get Argument
-	$result = Get-Argument($Args)
-	if( -not $result ) {
-		Usage
-		exit
-	}
+		set-variable -name NICOVIDEO_API_THUMINFO -value "http://ext.nicovideo.jp/api/getthumbinfo/" -option constant
+		set-variable -name NICOVIDEO_URL_CONNECT -value "https://secure.nicovideo.jp/secure/login?site=niconico" -option constant
+		set-variable -name NICOVIDEO_URL_MOVIEPAGE -value "http://www.nicovideo.jp/watch/{0}" -option constant
+		set-variable -name NICOVIDEO_URL_MOVIE_INFO -value @("http://flapi.nicovideo.jp/api/getflv?v={0}", "http://www.nicovideo.jp/api/getflv/{0}?as3=1") -option constant
+		set-variable -name NICOVIDEO_API -value "http://ext.nicovideo.jp/api/getthumbinfo/{0}" -option constant
 
-	# NicoVideo Login needs Cookie. Make CookieContainer.
-	$cc = New-Object System.Net.CookieContainer
 
-	# Login
-	$user = $ArgMap["-u"]
-	$password = $ArgMap["-p"]
-	$result = Login-NicoVideo $user $password ([ref] ${cc})
-	if( -not $result ) {
-		[Console]::WriteLine("LOGIN FAILED. USER:[$user], PASSWORD[$password]")
-		exit
-	}
+		$ErrorActionPreference = "Stop"
+		$encode = [Text.Encoding]::GetEncoding("utf-8")
 
-	$output_path = $ArgMap["-o"]
-	if( -not (Test-Path $output_path)) {
-		[Console]::WriteLine("INVALID OUTPUT_PATH.[$output_path]")
-		exit
-	}
-	$output_path = Convert-Path $output_path
-	if( ($output_path.Length -gt 0) -and ($output_path[$output_path.Length-1] -ne '\') ) {
-		$output_path = "${output_path}\"
-	}
+		# Usage
+		$Usages = @(
+			"Get NiconicoVideo's Movie File."
+			" Usage : $MyInvocation.MyCommand.Name -userid <UserID> -password <Password> -output_path <Output Directory> -movie_no <Movie No>[,<Movie No>...]";
+			"  OPTIONS"
+			"  -userid : NiconicoVideo UserName.";
+			"  -password : NiconicoVideo Password.";
+			"  -output_path : Output Directory.";
+			"  -movie_no : Download NiconicoVideo MovieNo List.";
+		)
 
-	foreach( $movie_no in $ArgMap["-movie_no"] ) {
-		[Console]::WriteLine("get movie [${movie_no}]")
 
-		# Get MovieInfo(use NicoAPI:get movie info)
-		$xmldata = Get-NicoAPI_MovieInfo($movie_no)
-		if($xmldata.nicovideo_thumb_response.status -ne "ok") {
-			[Console]::WriteLine("Movie Info don't get. MAY BE DELETED MOVIE. [${movie_no}]")
-			continue
+		# NicoVideo Login needs Cookie. Make CookieContainer.
+		$cc = New-Object System.Net.CookieContainer
+
+		# Login
+		$result = Login-NicoVideo $userid $password ([ref] ${cc})
+		if( -not $result ) {
+			[Console]::WriteLine("LOGIN FAILED. USER:[$userid], PASSWORD[$password]")
+			exit
 		}
 
-		$title = $xmldata.nicovideo_thumb_response.thumb.title -replace "[/?:*`"><|\\]", ""
-		#$user_nickname = $xmldata.nicovideo_thumb_response.thumb.user_nickname
-		#$year = Get-Date $xmldata.nicovideo_thumb_response.thumb.first_retrieve -Format "yyyy"
-		#$id_tag = "-metadata title=`"${title}`" -metadata year=`"${year}`" -metadata creator=`"${user_nickname}`" -metadata album=`"VOCALOID`" -id3v2_version 3"
+		if( -not (Test-Path $output_path)) {
+			[Console]::WriteLine("INVALID OUTPUT_PATH.[$output_path]")
+			exit
+		}
+		$output_path = Convert-Path $output_path
+		if( ($output_path.Length -gt 0) -and ($output_path[$output_path.Length-1] -ne '\') ) {
+			$output_path = "${output_path}\"
+		}
+
+	}
+	process {
+		$porcessed_list = @()
+		ForEach($mn in $movie_no) {
+			#すでに処理した動画は処理しない
+			if( $porcessed_list -contains $mn ) {
+				continue
+			}
+			$porcessed_list += $mn
+			[Console]::WriteLine("get movie [${mn}]")
+
+			# Get MovieInfo(use NicoAPI:get movie info)
+			$xmldata = Get-NicoAPI_MovieInfo(${mn})
+			if($xmldata.nicovideo_thumb_response.status -ne "ok") {
+				[Console]::WriteLine("Movie Info don't get. MAY BE DELETED MOVIE. [${mn}]")
+				continue
+			}
+
+			$title = $xmldata.nicovideo_thumb_response.thumb.title -replace "[/?:*`"><|\\]", ""
+			#$user_nickname = $xmldata.nicovideo_thumb_response.thumb.user_nickname
+			#$year = Get-Date $xmldata.nicovideo_thumb_response.thumb.first_retrieve -Format "yyyy"
+			#$id_tag = "-metadata title=`"${title}`" -metadata year=`"${year}`" -metadata creator=`"${user_nickname}`" -metadata album=`"VOCALOID`" -id3v2_version 3"
 
 
-		# get MoviePage
-		$movie_page = Get-NicoMoviePage $movie_no ([ref] ${cc})
-		#Write-Output $movie_page
+			# get MoviePage
+			$movie_page = Get-NicoMoviePage ${mn} ([ref] ${cc})
+			#Write-Output $movie_page
 
-		# get MovieInfo
-		foreach($moveInfURL in $NICOVIDEO_URL_MOVIE_INFO) {
-			$movie_info = Get-NicoMovieInfo $moveInfURL $movie_no ([ref] ${cc})
-			if($movie_info -match '&url=(.+)(&.+=|)') {
+			# get MovieInfo
+			foreach($moveInfURL in $NICOVIDEO_URL_MOVIE_INFO) {
+				$movie_info = Get-NicoMovieInfo $moveInfURL ${mn} ([ref] ${cc})
+				if($movie_info -match '&url=(.+)(&.+=|)') {
 
-				$movie_url = $Matches[1] -replace "%2F","/" -replace "%3A",":" -replace "%3D", "=" -replace "%3F", "?"
-				$tmp_file = "${output_path}${movie_no}.tmp"
+					$movie_url = $Matches[1] -replace "%2F","/" -replace "%3A",":" -replace "%3D", "=" -replace "%3F", "?"
+					$tmp_file = "${output_path}${mn}.tmp"
 
-				#movie download
-				GetWebFile ${movie_url} $tmp_file ([ref] ${cc}) | %{ if($_ -ne $true) { return } }
+					#movie download
+					GetWebFile ${movie_url} $tmp_file ([ref] ${cc}) | %{ if(${mn} -ne $true) { return } }
 
-				# get extend name
-				if( Test-Path ${tmp_file} -PathType leaf ) {
-					$ext = Get-FileType $tmp_file
+					# get extend name
+					if( Test-Path ${tmp_file} -PathType leaf ) {
+						$ext = Get-FileType $tmp_file
 
-					#tmp file name change to file name
-					Move-Item $tmp_file "${output_path}${movie_no}.${ext}" -Force
-					[Console]::WriteLine("GetWebFile Success.")
-					break
+						#tmp file name change to file name
+						Move-Item $tmp_file "${output_path}${mn}.${ext}" -Force
+						[Console]::WriteLine("GetWebFile Success.")
+						break
+					} else {
+						# Movie Info don't get
+						[Console]::WriteLine("GetWebFile failed.")
+					}
+
 				} else {
 					# Movie Info don't get
-					[Console]::WriteLine("GetWebFile failed.")
+					[Console]::WriteLine("FAILED get MovieInfoPage.")
 				}
-
-			} else {
-				# Movie Info don't get
-				[Console]::WriteLine("FAILED get MovieInfoPage.")
 			}
-		}
 
-		# wait 30sec
-		Start-Sleep -s 30
+			# wait 30sec
+			Start-Sleep -s 30
+		}
 	}
+	end {}
+}
+

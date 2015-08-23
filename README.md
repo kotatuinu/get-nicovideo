@@ -22,15 +22,15 @@ PS > ./get-nicovideo.ps1 -userid <UserID> -password <Password> -output_path <Out
 ※：パラメータ名（-useridや-passwordなど）は省略可能。その場合は引数を置く順番を守ること。
 
 ● ニコニコ動画 マイリスト 動画番号取得ツール  
-ニコニコ動画のマイリスト番号（"http://www.nicovideo.jp/mylist/<マイリスト番号>"）を指定することで、そのマイリストに登録されている動画番号をリストで取得します。  
-`PS > .\get-nicomylist.ps1 -mylist <動画番号>`
+ニコニコ動画のマイリスト番号（マイリストURL:"http://www.nicovideo.jp/mylist/<マイリスト番号>"の<マイリスト番号>の部分）を指定することで、そのマイリストに登録されている動画番号をリストで取得します。  
+`PS > .\get-nicomylist.ps1 -mylist <マイリスト番号>`  
 * -mylist : 登録されている動画番号を取得したいマイリスト番号。カンマで区切ることで複数指定可能。パイプラインで渡すことも可能。  
-※：パラメータ名（-mylist）は省略可能。
+※：パラメータ名（-mylist）は省略可能。  
 
 
 ２つのツールを組み合わせて、マイリストの動画をダウンロードできます。複数のマイリストを指定することも可能。  
-`PS > .\get-nicomylist.ps1 <動画番号> | .\get-nicovideo.ps1 -user <UserID> -password <Password> -output_path <出力ディレクトリ>`
-`PS > <動画番号1>,<動画番号2> | .\get-nicomylist.ps1 | .\get-nicovideo.ps1 -user <UserID> -password <Password> -output_path <出力ディレクトリ>`
+`PS > .\get-nicomylist.ps1 <マイリスト番号> | .\get-nicovideo.ps1 -user <UserID> -password <Password> -output_path <出力ディレクトリ>`  
+`PS > <マイリスト番号1>,<マイリスト番号2> | .\get-nicomylist.ps1 | .\get-nicovideo.ps1 -user <UserID> -password <Password> -output_path <出力ディレクトリ>`  
 
 
 ## 技術的覚書
